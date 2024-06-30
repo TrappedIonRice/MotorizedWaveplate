@@ -15,6 +15,7 @@ const double minStepSize = 0; // Minimum step size required to move the motor
 
 double targetSetpoint = 2; // Target setpoint for PID control (must be within photodiode range)
 double currentInput, currentOutput, currentVoltage, errorGap;
+int off = 0;
 
 // Define the PID tuning parameters
 double Kp = 3, Ki = 0.3, Kd = 0.0;
@@ -35,6 +36,7 @@ void setup() {
 }
 
 void loop() {
+  if (off = 1){
   unsigned long currentMillis = millis();
 
   updateParameters(); // Check for serial input
@@ -73,6 +75,7 @@ void loop() {
 
     }
   }
+}
 }
 
 // Function to enable the motor
