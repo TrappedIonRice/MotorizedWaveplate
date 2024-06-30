@@ -9,15 +9,16 @@ float maxVoltage = 0;  // Maximum voltage recorded
 
 PRODRIVER myProDriver; //Create instance of this object
 
-void setup()
-{
+void setup() {
   Serial.begin(9600);
+  Serial.println("Setup started");  // Debug: Setup start message
   pinMode(enable, OUTPUT);
 
   //initialize the variables we're linked to
   input = analogRead(sensorPin);
 
   myProDriver.begin(); // default settings
+  Serial.println("Setup completed");  // Debug: Setup completed message
 }
 
 void loop() {
@@ -34,10 +35,9 @@ void loop() {
     input = analogRead(sensorPin);  // read the voltage from photodiode
     float voltage = input * (5.0 / 1023.0);  // convert to voltage
 
-    //Serial.print("Step: ");
+    Serial.print("Step: ");
     Serial.print(stepCount);
-    //Serial.print(", Voltage: ");
-    Serial.print(" ");
+    Serial.print(" Voltage: ");
     Serial.println(voltage);
     totalstep += interval;
     
@@ -53,6 +53,8 @@ void loop() {
   // Move back to the step with the maximum voltage
   if (maxStep != 0) {
     int stepsBack = totalstep - maxStep;
+    Serial.print("Moving back to max voltage step. Steps back: ");
+    Serial.println(stepsBack);
     digitalWrite(enable, HIGH);
     delay(200);
     myProDriver.step(stepsBack, 1);  // Move backward to the max voltage step
@@ -63,8 +65,10 @@ void loop() {
     totalstep = maxStep;  // Reset the total step to maxStep after returning to max voltage
   }
 
-  // Move back to the origin
+  // Move back to origin
   if (totalstep != 0) {
+    Serial.print("Moving back to origin. Steps back: ");
+    Serial.println(totalstep);
     digitalWrite(enable, HIGH);
     delay(200);
     myProDriver.step(totalstep, 1);  // Move backward to the origin
