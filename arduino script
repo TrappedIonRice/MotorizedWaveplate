@@ -1,0 +1,184 @@
+#include "SparkFun_ProDriver_TC78H670FTG_Arduino_Library.h"  // Include ProDriver library
+#include <PID_v1.h>
+
+// Hardware Connections and Pin Definitions
+const byte motorEnablePin = 7;      // Motor enable pin (HIGH: motor on, LOW: motor off)
+const int sensorPin = A0;           // Input pin for photodetector
+
+// PID Control Variables
+double pidSampleTime = 2000;        // PID sample time in milliseconds (modifiable via serial command)
+double outputLimitMin = -2;         // Minimum output limit for PID
+double outputLimitMax = 2;          // Maximum output limit for PID
+double targetSetpoint = 2.0;        // Target setpoint for PID control (must be within 0-4.8V)
+double currentInput, currentOutput, currentVoltage, errorGap; // Variables for sensor input, PID output, calculated voltage, and error signal
+double Kp = 3, Ki = 0.3, Kd = 0.0;  // PID tuning parameters
+
+// Control Variables
+bool pidEnabled = true;             // Variable to control PID state
+const unsigned long readInterval = 50; // Interval for reading sensor input in milliseconds
+const double tolerance = 0.02;      // Tolerance for floating-point comparison
+unsigned long measurementInterval = 2000;  // Measurement interval when PID is off
+unsigned long previousMeasurementMillis = 0;  // Timestamp of last measurement when PID is off
+int scalingFactor = 50;             // Scaling factor to convert PID output to motor steps
+
+PRODRIVER myProDriver;              // Motor driver object
+PID myPID(&currentVoltage, &currentOutput, &targetSetpoint, Kp, Ki, Kd, DIRECT); // PID object
+
+unsigned long previousMillis = 0;   // Stores the last time the sensor was read when PID is on
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(motorEnablePin, OUTPUT);
+
+  setupPID(); // Initialize the PID controller
+
+  myProDriver.begin(); // Initialize the motor driver
+}
+
+void loop() {
+
+  unsigned long currentMillis = millis();
+
+  updateParameters(); // Check for serial input and update parameters
+
+  if (pidEnabled) {
+    // Measure input and calculate voltage every readInterval milliseconds
+    if (currentMillis - previousMillis >= readInterval) {
+      previousMillis = currentMillis;
+
+      // Read the sensor input (analog value) and convert it to voltage
+      currentInput = analogRead(sensorPin);
+      currentVoltage = (5.0 / 1023.0) * currentInput;
+
+      // Calculate the error signal (difference between desired and actual voltage)
+      errorGap = targetSetpoint - currentVoltage;
+
+      // If PID computation is TRUE and error gap exceeds tolerance, move the motor
+      if (myPID.Compute()) {
+        if (abs(errorGap) >= tolerance) {
+
+          double stepSize = round(scalingFactor * abs(currentOutput)); // Calculate number of steps to move
+
+          enableMotor();
+          delay(100);
+
+          myProDriver.step(stepSize, getMotorDirection()); // Use output of PID to determine number of steps
+
+          delay(100);
+          disableMotor();
+
+          // Print the current voltage and target setpoint for monitoring
+          Serial.print(currentVoltage);
+          Serial.print(" ");
+          Serial.println(targetSetpoint);
+        }
+        else {
+          // Print the current voltage and target setpoint for monitoring
+          Serial.print(currentVoltage);
+          Serial.print(" ");
+          Serial.println(targetSetpoint);
+        }
+      }
+    }
+  } else {
+    // Measure voltage at the specified interval when PID is off
+    if (currentMillis - previousMeasurementMillis >= measurementInterval) {
+      previousMeasurementMillis = currentMillis;
+
+      // Read the sensor input and calculate the corresponding voltage
+      currentInput = analogRead(sensorPin);
+      currentVoltage = (5.0 / 1023.0) * currentInput;
+
+      // Print the current voltage and setpoint
+      Serial.print(currentVoltage);
+      Serial.print(" ");
+      Serial.println(targetSetpoint);
+    }
+  }
+}
+
+// Function to enable the motor
+void enableMotor() {
+  digitalWrite(motorEnablePin, HIGH);
+}
+
+// Function to disable the motor
+void disableMotor() {
+  digitalWrite(motorEnablePin, LOW);
+}
+
+// Function to initialize the PID controller
+void setupPID() {
+  myPID.SetSampleTime(pidSampleTime); // Set the sample time for PID computations
+  myPID.SetOutputLimits(outputLimitMin, outputLimitMax); // Set the output limits for the PID controller
+  myPID.SetMode(AUTOMATIC); // Set the PID controller to automatic mode
+}
+
+// Function to determine motor direction by stepping in both directions and comparing error gaps
+int getMotorDirection() {
+
+  enableMotor();
+  delay(100);
+
+  myProDriver.step(10, 0); // Step the motor in one direction
+
+  // Read the sensor after stepping to see how the voltage changed
+  double secondInput = analogRead(sensorPin);
+  double secondVoltage = (5.0 / 1023.0) * secondInput;
+  double newGap = targetSetpoint - secondVoltage;
+
+  myProDriver.step(10, 1); // Step the motor in the opposite direction
+
+  // Choose correct direction based on which error is smaller
+  int direction = (newGap > errorGap) ? 1 : 0;
+
+  // If the PID output is negative, reverse the direction
+  if (currentOutput < 0) {
+    direction = !direction;
+  }
+
+  return direction;
+}
+
+// Function to update PID parameters based on serial input commands
+void updateParameters() {
+
+  if (Serial.available() > 0) {
+    String serialInput = Serial.readStringUntil('\n');
+    char command = serialInput.charAt(0);
+    double value = serialInput.substring(1).toDouble();
+
+    // Serial commands:
+    // 'S' followed by value - Set target setpoint
+    // 'P' followed by value - Set Kp
+    // 'I' followed by value - Set Ki
+    // 'D' followed by value - Set Kd
+    // 'E' followed by value - Enable (value = 1) or disable PID (value = 0)
+    // 'T' followed by value - Set PID sample time in milliseconds
+
+    switch (command) {
+      case 'S':
+        targetSetpoint = value;
+        break;
+      case 'P':
+        Kp = value;
+        myPID.SetTunings(Kp, Ki, Kd);
+        break;
+      case 'I':
+        Ki = value;
+        myPID.SetTunings(Kp, Ki, Kd);
+        break;
+      case 'D':
+        Kd = value;
+        myPID.SetTunings(Kp, Ki, Kd);
+        break;
+      case 'E':
+        pidEnabled = (value != 0);
+        break;
+      case 'T':
+        pidSampleTime = value;
+        myPID.SetSampleTime(pidSampleTime); // Update PID sample time
+        break;
+    }
+  }
+}
