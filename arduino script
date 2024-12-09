@@ -7,19 +7,21 @@ const int sensorPin = A0;           // Input pin for photodetector
 
 // PID Control Variables
 double pidSampleTime = 2000;        // PID sample time in milliseconds (modifiable via serial command)
-double outputLimitMin = -2;         // Minimum output limit for PID
-double outputLimitMax = 2;          // Maximum output limit for PID
-double targetSetpoint = 2.0;        // Target setpoint for PID control (must be within 0-4.8V)
+double outputLimitMin = -6;
+double outputLimitMin = 6;
+
+double targetSetpoint = 2.5;        // Target setpoint for PID control (must be within 0-4.8V)
 double currentInput, currentOutput, currentVoltage, errorGap; // Variables for sensor input, PID output, calculated voltage, and error signal
 double Kp = 3, Ki = 0.3, Kd = 0.0;  // PID tuning parameters
 
 // Control Variables
-bool pidEnabled = true;             // Variable to control PID state
+bool pidEnabled = false;             // Variable to control PID state
 const unsigned long readInterval = 50; // Interval for reading sensor input in milliseconds
 const double tolerance = 0.02;      // Tolerance for floating-point comparison
 unsigned long measurementInterval = 2000;  // Measurement interval when PID is off
 unsigned long previousMeasurementMillis = 0;  // Timestamp of last measurement when PID is off
-int scalingFactor = 50;             // Scaling factor to convert PID output to motor steps
+int scalingFactor = 10;             // Scaling factor to convert PID output to motor steps
+
 
 PRODRIVER myProDriver;              // Motor driver object
 PID myPID(&currentVoltage, &currentOutput, &targetSetpoint, Kp, Ki, Kd, DIRECT); // PID object
