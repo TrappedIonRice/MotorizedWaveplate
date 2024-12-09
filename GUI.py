@@ -56,8 +56,8 @@ def ensure_data_folder_exists():
 class PIDControlApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.Kp = 1
-        self.Ki = 0.3
+        self.Kp = 0.8
+        self.Ki = 0.5
         self.Kd = 0
         self.setpoint_value = 2.5
         self.sample_time_value = 2000
@@ -221,8 +221,8 @@ class PIDControlApp(QWidget):
             with open("settings.json", "r") as file:
                 settings = json.load(file)
                 self.setpoint_value = float(settings.get("Setpoint", 2.5))
-                self.Kp = float(settings.get("Kp", 1.0))
-                self.Ki = float(settings.get("Ki", 0.3))
+                self.Kp = float(settings.get("Kp", 0.8))
+                self.Ki = float(settings.get("Ki", 0.5))
                 self.Kd = float(settings.get("Kd", 0.0))
                 self.sample_time_value = int(settings.get("Sample_time", 2000))
                 self.num_points = int(settings.get("Num_points", 200))

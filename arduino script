@@ -12,7 +12,7 @@ double outputLimitMin = 6;
 
 double targetSetpoint = 2.5;        // Target setpoint for PID control (must be within 0-4.8V)
 double currentInput, currentOutput, currentVoltage, errorGap; // Variables for sensor input, PID output, calculated voltage, and error signal
-double Kp = 3, Ki = 0.3, Kd = 0.0;  // PID tuning parameters
+double Kp = 0.8, Ki = 0.5, Kd = 0.0;  // PID tuning parameters
 
 // Control Variables
 bool pidEnabled = false;             // Variable to control PID state
